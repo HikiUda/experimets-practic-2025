@@ -1,0 +1,62 @@
+openapi: '3.0.3'
+info:
+    title: API Title
+    version: '1.0'
+servers:
+    - url: https://api.server.test/v1
+paths:
+    /test/{id}:
+        put:
+            summary: 'lol'
+            parameters:
+                - name: id
+                  required: true
+                  in: path
+                  schema:
+                      type: integer
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/TodoUpdate'
+            responses:
+                '200':
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TodoItem'
+
+components:
+    schemas:
+        TodoItem:
+            type: object
+            properties:
+                id:
+                    type: integer
+                    format: int64
+                title:
+                    type: string
+                completed:
+                    type: boolean
+            required: [id, title, completed]
+
+        TodoCreate:
+            type: object
+            properties:
+                title:
+                    type: string
+                completed:
+                    type: boolean
+                    default: false
+            required: [title]
+
+        TodoUpdate:
+            type: object
+            properties:
+                title:
+                    type: string
+                completed:
+                    type: boolean
+            required: [title, completed]
