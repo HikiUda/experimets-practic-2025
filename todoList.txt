@@ -1,0 +1,103 @@
+// задание 2
+
+type Flatten<T extends unknown[]> =  T extends [infer R, ...infer V] ? R extends unknown[] ? [...Flatten<R>, ...Flatten<V>] : [R, ...Flatten<V>] : T
+
+type Res32 = Flatten<[1,2, [1,2, [3]]]> // [1,2,1,2,3]
+
+// задание 3
+
+// перепешите Reverse на хвостовую рекурсию
+type Reverse<Tuple extends unknown[], Result extends unknown[] = []> =
+  Tuple extends [infer First, ...infer Rest]
+    ? Reverse<Rest, [First, ...Result]>
+    : Result;
+type Ten = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+// глубина рекурсии больше 50
+type Res22 = Reverse<[...Ten, ...Ten, ...Ten, ...Ten, ...Ten, 1]>
+
+// задание 4
+
+type SafeMergeTuple<T extends unknown[]> = T extends [infer R, ...infer V ] ? SafeMerge<R, SafeMergeTuple<V>> : {} 
+
+type Res4 = SafeMergeTuple<
+  [{ value: string }, { name: string }, { age: number; name: number }]
+>; // { value: string, name: number , age: number}
+
+type Todo = {
+  id: number;
+  text: string;
+  completed: true | false;
+}
+
+
+
+type TodoList = [
+  {
+    id: 1;
+    text: "Create something";
+    completed: true;
+  },
+];
+
+
+
+
+type AddItem<TodoList extends Todo[], Id extends number, Text extends string> = [...TodoList, {id:Id, text: Text, completed: false}]
+type RemoveItem<TodoList extends Todo[], Id extends number> = 
+TodoList extends [infer R extends Todo, ...infer V extends Todo[] ] 
+? R["id"] extends Id 
+? [...RemoveItem<V, Id>] 
+: [R,...RemoveItem<V, Id>] 
+: []
+
+type UpdateText<TodoList extends Todo[], Id extends number, Text extends string> =
+TodoList extends [infer R extends Todo, ...infer V extends Todo[] ] 
+? R["id"] extends Id
+? [{[K in keyof R]: K extends "text" ? Text : R[K]},...UpdateText<V, Id, Text>] 
+: [R,...UpdateText<V, Id, Text>] 
+: []
+
+type ToggleCompleted<TodoList extends Todo[], Id extends number> = 
+TodoList extends [infer R extends Todo, ...infer V extends Todo[] ] 
+? R["id"] extends Id
+? [{[K in keyof R]: K extends "completed" ? R[K] extends true ? false : true : R[K]},...ToggleCompleted<V, Id>] 
+: [R,...ToggleCompleted<V, Id>] 
+: []
+
+type FindById<TodoList extends Todo[], Id extends number> =
+TodoList extends [infer R extends Todo, ...infer V extends Todo[] ] 
+? R["id"] extends Id ? R : FindById<V, Id> : never
+
+type FilterBy<TodoList extends Todo[], Pattern extends string | boolean> =
+TodoList extends [infer R extends Todo, ...infer V extends Todo[] ] 
+? Pattern extends string
+? R["text"] extends `${string}${Pattern}${string}`
+? [R,...FilterBy<V, Pattern>]
+: [...FilterBy<V, Pattern>]
+: R["completed"] extends Pattern
+? [R,...FilterBy<V, Pattern>]
+: [...FilterBy<V, Pattern>]
+: []
+
+// type FilterBy<TodoList extends Todo[], Pattern extends string | boolean> =
+// TodoList extends [infer R extends Todo, ...infer V extends Todo[] ] 
+// ? R["text"] extends `${string}${Pattern}${string}`
+// ? R["completed"] extends Pattern
+// ? [R,...FilterBy<V, Pattern>]
+// : [...FilterBy<V, Pattern>]
+// : []
+// : []
+
+
+type R111 = AddItem<TodoList, 2, 'lol'>
+type R112 = UpdateText<R111, 2, 'lolkek'>
+type R113 = RemoveItem<R111, 2>
+type R114 = ToggleCompleted<R111, 1>
+type R115 = ToggleCompleted<R114, 2>
+type R116 = FindById<R114, 2>
+type R117 = FindById<R114, 3>
+type R118 = AddItem<R112, 3, 'lol'>
+type R119 = FilterBy<R118, 'lol'>
+type R1110 = FilterBy<R118, true>
+
+

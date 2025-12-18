@@ -1,0 +1,155 @@
+
+type BuildTuple<N extends number, T extends unknown[] = []> = 
+  T["length"] extends N ? T : BuildTuple<N, [...T, unknown]>;
+
+type T = BuildTuple<20>
+
+type Add<A extends number, B extends number> = 
+  [...BuildTuple<A>, ...BuildTuple<B>]["length"];
+
+type R3 = Add<10, 20>
+
+// Test
+type Sum = Add<3, 4>; // 7
+const sum: Sum = 7; // Works ✅
+// const invalid: Sum = 5; // Error ❌
+
+type Subtract<A extends number, B extends number> = 
+  BuildTuple<A> extends [...BuildTuple<B>, ...infer Remainder] 
+    ? Remainder["length"] 
+    : never;
+
+// Test
+type Difference = Subtract<5, 3>; // 2
+type Invalid = Subtract<3, 5>; // never
+
+type Multiply<A extends number, B extends number, Result extends number = 0> = 
+  B extends 1 
+    ? Add<A, Result> 
+    : Multiply<
+        A, 
+        Subtract<B, 1>, 
+        Add<Result, A> & number
+      >;
+
+// compare
+type LTE<A extends number, B extends number> = BuildTuple<A> extends [...BuildTuple<B>, ...infer Remainder] ? false : true
+
+// division *
+type Division  <A extends number, B extends number, Result extends number = 0>  =
+LTE<A, B> extends true
+  ? Result
+  :A extends 0 
+    ? Result
+    : Division<
+        Subtract<A, B>, 
+        B, 
+        Add<Result, 1> & number
+      >
+
+
+
+// utils
+export type IsNever<T> = [T] extends [never] ? true : false;
+type UnionToIntersection<U> =
+  (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never
+
+
+// Хак компилятора
+type LastOf<T> =
+  UnionToIntersection<T extends unknown ? () => T : never> extends () => (infer R) ? R : never
+
+
+type TuplifyUnion<T, L = LastOf<T>> =
+  IsNever<T> extends true ? [] 
+  : [...TuplifyUnion<Exclude<T, L>>, L]
+
+type abc = 'a' | 'b' | 'c';
+type t = TuplifyUnion<abc>; // ["a", "b", "c"] 
+  
+
+type ReplaceAll<Str, Pattern, NewValue> = Str extends `${infer Left}${Pattern &
+  string}${infer Right}`
+  ? `${Left}${NewValue & string}${ReplaceAll<Right, Pattern, NewValue>}`
+  : Str;
+
+type TRA = ReplaceAll<`1 + 1 * 2`, " ", "">;
+
+
+type ReplaceObj = Record<string, string | number | boolean>
+
+type ReplaceObjectValues<Str, Obj extends ReplaceObj, KeysTuple = TuplifyUnion<keyof Obj>> = 
+  KeysTuple extends [infer Key, ...unknown[]] ?
+    ReplaceObjectValues<ReplaceAll<Str, Key, `${Obj[Key & keyof Obj]}`>, Omit<Obj, Key & keyof Obj>>
+  : Str
+
+type TROV = ReplaceObjectValues<
+//   ^?
+   `(one + three) - (four / (two))`,
+  { one: 1; two: 2; three: 3; four: 4 }
+>;
+
+type Or<Left, Right> = Left extends false ? Right extends false ? false : true : true
+type And<Left, Right> = Left extends true ? Right extends true ? true : false : false
+type Not<Left> = Left extends false ? true : false
+
+
+
+type Pop<T> = T extends [...infer R, unknown] ? R : never
+type Push<T extends unknown[], V> = [...T, V]
+
+type RemoveLast<T, S> = T extends `${infer F}${S & string}` ? F : never
+
+type SplitByBrackets<Str> = 
+  Str extends `${infer Before}(${infer Rest}` ? 
+    FindCloseBracket<Rest> extends infer Result extends {left:string, right:string} ?
+      [Before, Result['left'], Result['right']]
+      : never
+   : never
+
+
+type FindCloseBracket<Str, Acum extends string = '', Stack extends unknown[] = ['(']> = 
+  Stack['length'] extends 0 ? {
+    left: RemoveLast<Acum, ')'>,
+    right: Str,
+  }
+  : Str extends `${infer Letter}${infer Rest}`
+    ? Letter extends '(' 
+        ? FindCloseBracket<Rest, `${Acum}${Letter}`, Push<Stack, '('>>
+      : Letter extends ')' 
+        ? FindCloseBracket<Rest, `${Acum}${Letter}`, Pop<Stack>>
+      : FindCloseBracket<Rest, `${Acum}${Letter}`, Stack> 
+  : never
+
+type TFCB = FindCloseBracket<'1+(2-3)+4)-(5)'>
+
+type TSBB = SplitByBrackets<"1+(2-(3+4)+5)+(6)">
+//   ^?
+
+type CalculatorStr<Str, Result extends number = 0> = 
+
+  Str extends `${infer Left}(${infer Rest}` ?
+    FindCloseBracket<Rest> extends {left: infer Inner extends string, right: infer Right extends string} 
+      ?  CalculatorStr<`${Left}${CalculatorStr<Inner>}${Right}`>
+      : 0
+  : Str extends `${infer Left}/${infer Right}` ? Division<CalculatorStr<Left>, CalculatorStr<Right>>
+  : Str extends `${infer Left}*${infer Right}` ? Multiply<CalculatorStr<Left>, CalculatorStr<Right>>
+  : Str extends `${infer Left}-${infer Right}` ? Subtract<CalculatorStr<Left>, CalculatorStr<Right>>
+  : Str extends `${infer Left}+${infer Right}` ? Add<CalculatorStr<Left>, CalculatorStr<Right>>
+  : Str extends `${infer V extends number}` ? V
+  : 0
+
+type TBAS = CalculatorStr<"1+1">
+//   ^?
+type TBAS2 = CalculatorStr<"2-1*3">
+//   ^?
+type TBAS3 = CalculatorStr<"(3-(1-1))*3">
+//   ^?
+
+type Calculator<T, P extends ReplaceObj> = CalculatorStr<ReplaceAll<ReplaceObjectValues<T, P>, ' ', ''>>;
+
+type Res = Calculator<
+  //   ^?
+  `(one + three) - (four / (two))`,
+  { one: 1; two: 2; three: 3; four: 4 }
+>;
